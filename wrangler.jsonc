@@ -1,0 +1,24 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "architecturematters-maintenance",
+	"main": "src/index.js",
+	"compatibility_date": "2026-10-01",
+	"assets": {
+		"directory": "./public",
+		"binding": "ASSETS",
+		// Worker handles page requests; static files are served straight from assets.
+		"run_worker_first": ["/*", "!/img/*", "!/favicon.png", "!/robots.txt"]
+	},
+	"vars": {
+		// "503" = temporary outage (good for SEO short-term). Switch to "200" if this runs > ~1 week.
+		"MAINTENANCE_STATUS": "503"
+	},
+	"observability": { "enabled": true }
+
+	// When the client is ready to switch DNS over, uncomment this (requires the
+	// architecturematters.com.au zone to be on the same Cloudflare account):
+	// ,"routes": [
+	//   { "pattern": "architecturematters.com.au", "custom_domain": true },
+	//   { "pattern": "www.architecturematters.com.au", "custom_domain": true }
+	// ]
+}
