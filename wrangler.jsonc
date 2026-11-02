@@ -15,10 +15,15 @@
 	},
 	"observability": { "enabled": true }
 
-	// When the client is ready to switch DNS over, uncomment this (requires the
-	// architecturematters.com.au zone to be on the same Cloudflare account):
+	// Must be deployed into the Architecture Matters Cloudflare account (the one
+	// that owns the zone). If your login can see several accounts, set this:
+	// ,"account_id": "<their account id>"
+
+	// Go live: uncomment and `npm run deploy`. Routes take over traffic on the
+	// existing *proxied* (orange-cloud) DNS records, so no DNS changes are needed
+	// and the old records stay intact for when WordPress is restored.
 	// ,"routes": [
-	//   { "pattern": "architecturematters.com.au", "custom_domain": true },
-	//   { "pattern": "www.architecturematters.com.au", "custom_domain": true }
+	//   { "pattern": "architecturematters.com.au/*", "zone_name": "architecturematters.com.au" },
+	//   { "pattern": "www.architecturematters.com.au/*", "zone_name": "architecturematters.com.au" }
 	// ]
 }

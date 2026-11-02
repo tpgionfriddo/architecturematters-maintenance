@@ -24,16 +24,27 @@ npm run deploy     # -> https://architecturematters-maintenance.<subdomain>.work
 
 ## Going live on the real domain
 
-**Option A – zone already on Cloudflare (or moved there):** uncomment the `routes` block in
-`wrangler.jsonc` and run `npm run deploy`. Cloudflare creates the DNS records and certificate,
-replacing the existing apex/www records that point at the hacked server.
-(Or: dashboard → Workers → architecturematters-maintenance → Settings → Domains & Routes → Add custom domain.)
+The zone is in Architecture Matters' own Cloudflare account, so the Worker must be deployed
+**into that account** (a Worker can't attach to a zone in another account).
 
-**Option B – DNS hosted elsewhere:** Workers custom domains need the zone on Cloudflare. Either
-move the nameservers to Cloudflare (free plan is fine) and then use Option A. Pointing a CNAME
-at `*.workers.dev` won't work.
+1. **Get access:** they invite you under Manage Account → Members (Administrator, or a role
+   that includes Workers + Zone/DNS edit). Or they create an API token from the
+   "Edit Cloudflare Workers" template, scoped to their account and zone, and you use
+   `CLOUDFLARE_API_TOKEN=... npm run deploy`.
+2. **Check DNS:** in their dashboard, open DNS for architecturematters.com.au. The `@` (apex) and
+   `www` records must be **Proxied** (orange cloud). If `www` doesn't exist, add
+   `A www 192.0.2.1` (proxied). This is a dummy IP, because the Worker answers before any
+   request reaches it.
+3. **Deploy:** set `account_id` if needed, uncomment `routes` in `wrangler.jsonc`, then
+   `npx wrangler login && npm run deploy`.
+4. **Verify:** `curl -I https://architecturematters.com.au/` should show `HTTP/2 503` and
+   `retry-after`.
 
-`www.` gets a 301 redirect to the apex.
+Email (MX/TXT records) is unaffected.
+
+**While restoring WordPress:** the routes catch all traffic, including `/wp-admin`. Whoever
+restores the site can use a temporary hostname (e.g. a proxied `staging.` record pointing at
+the server) or a hosts-file entry pointing at the origin IP.
 
 ## SEO note
 
@@ -44,5 +55,6 @@ get pages dropped from the index.
 
 ## Restoring the main site
 
-Remove the custom domain/route from this Worker (or delete the Worker) and point DNS back at
-the restored WordPress host.
+Re-comment the `routes` and redeploy, or delete the routes under Workers → architecturematters-maintenance →
+Settings → Domains & Routes. Traffic goes straight back to whatever the DNS records point at.
+If WordPress moves to a new server, update the apex/www records to its IP.
