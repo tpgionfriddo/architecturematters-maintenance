@@ -15,15 +15,11 @@
 	},
 	"observability": { "enabled": true }
 
-	// Must be deployed into the Architecture Matters Cloudflare account (the one
-	// that owns the zone). If your login can see several accounts, set this:
-	// ,"account_id": "<their account id>"
-
-	// Go live: uncomment and `npm run deploy`. Routes take over traffic on the
-	// existing *proxied* (orange-cloud) DNS records, so no DNS changes are needed
-	// and the old records stay intact for when WordPress is restored.
+	// Deployed in OUR account on a throwaway zone, with Cloudflare for SaaS enabled.
+	// architecturematters.com.au + www are added as SaaS "custom hostnames" and
+	// CNAME to am.<throwaway>. The wildcard route catches that traffic.
+	// Replace example-throwaway.com with the real throwaway domain, then uncomment:
 	// ,"routes": [
-	//   { "pattern": "architecturematters.com.au/*", "zone_name": "architecturematters.com.au" },
-	//   { "pattern": "www.architecturematters.com.au/*", "zone_name": "architecturematters.com.au" }
+	//   { "pattern": "*/*", "zone_name": "example-throwaway.com" }
 	// ]
 }
