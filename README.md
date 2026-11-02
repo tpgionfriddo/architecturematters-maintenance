@@ -1,81 +1,52 @@
 # Architecture Matters – interim maintenance site
 
-A static "website under maintenance" page for architecturematters.com.au, served from a
-Cloudflare Worker while the hacked WordPress site is restored. Styling (Raleway, #FCC707
-yellow, animated gradient hero, logo, project photos) was taken from the original
-`rarchitecture` theme. The original images and logo came from the Wayback Machine, because
-the live site's `/wp-content/uploads` has been wiped.
+A static "website under maintenance" page for architecturematters.com.au, hosted on GitHub Pages
+while the hacked WordPress site is restored. Styling (Raleway, #FCC707 yellow, animated gradient
+hero, logo, project photos) was taken from the original `rarchitecture` theme. The original images
+and logo came from the Wayback Machine, because the live site's `/wp-content/uploads` has been
+wiped.
 
 ```
-public/index.html   the page (inline CSS, no build step)
-public/img/         logo + 5 hero photos (webp)
-src/index.js        serves the page for every URL, adds 503/Retry-After + security headers
-wrangler.jsonc      Worker config
+public/index.html             the page (inline CSS, no build step)
+public/img/                   logo + 5 hero photos (webp)
+.github/workflows/pages.yml   deploys public/ on every push to main
 ```
 
-## Develop / deploy
+The workflow also generates `404.html` from `index.html`, so old WordPress URLs
+(`/contact-us/` etc.) still show the maintenance page.
 
-```sh
-npm install
-npm run dev        # http://localhost:8787
-npx wrangler login
-npm run deploy     # -> https://architecturematters-maintenance.<subdomain>.workers.dev
-```
+Preview: https://tpgionfriddo.github.io/architecturematters-maintenance/
 
-## Going live on the real domain
+## Going live on architecturematters.com.au
 
-The Worker runs in **our** Cloudflare account on a throwaway domain (`example-throwaway.com`
-below). Architecture Matters keeps their own Cloudflare account and just points their records
-at us. A plain CNAME between two Cloudflare accounts is blocked (error 1014). **Cloudflare for
-SaaS** is what makes it work, and it's free for up to 100 hostnames.
+1. **Their Cloudflare DNS:** first note the current `@` record (`A 203.29.225.181`) so it can be
+   restored later. Then set these, all **DNS only (grey cloud)**:
 
-### Our side (throwaway zone)
+   | Type | Name | Content |
+   |---|---|---|
+   | A | `@` | `185.199.108.153` |
+   | A | `@` | `185.199.109.153` |
+   | A | `@` | `185.199.110.153` |
+   | A | `@` | `185.199.111.153` |
+   | CNAME | `www` | `tpgionfriddo.github.io` |
 
-1. Add the throwaway domain to our Cloudflare account (Free plan) and wait for it to be Active.
-2. **SSL/TLS → Custom Hostnames → Enable Cloudflare for SaaS.**
-3. DNS: add the fallback origin and the target the client will point at:
-   | Type | Name | Content | Proxy |
-   |---|---|---|---|
-   | AAAA | `proxy-fallback` | `100::` | Proxied |
-   | CNAME | `am` | `proxy-fallback.example-throwaway.com` | Proxied |
-4. **Custom Hostnames → Fallback Origin:** `proxy-fallback.example-throwaway.com` and wait for **Active**.
-5. **Add Custom Hostname** twice: `architecturematters.com.au` and `www.architecturematters.com.au`
-   (certificate validation: TXT, see below).
-6. Put the real throwaway domain into `routes` in `wrangler.jsonc` (`*/*`), then `npm run deploy`.
-   Check it: `https://am.example-throwaway.com` should show the page.
+   Remove the old `A 203.29.225.181` record. Leave the MX/TXT (email) records alone.
 
-### Their side (architecturematters.com.au DNS)
+2. **This repo → Settings → Pages → Custom domain:** `architecturematters.com.au` → Save. Once the
+   DNS check passes and the certificate is issued (minutes to an hour), tick **Enforce HTTPS**.
+   GitHub redirects `www` to the apex automatically.
 
-**Before cutover (optional, avoids a gap while certificates are issued):** for each custom
-hostname, the dashboard shows TXT records (`_cf-custom-hostname…` and `_acme-challenge…`). They
-add these, and we wait until both Hostname status and Certificate status are **Active**.
+Do step 2 only after step 1. Setting the domain early makes the github.io preview redirect to
+the (still hacked) live site.
 
-**Cutover:** they change the two existing records:
-
-| Type | Name | Content | Proxy |
-|---|---|---|---|
-| CNAME | `@` | `am.example-throwaway.com` | Proxied |
-| CNAME | `www` | `am.example-throwaway.com` | Proxied |
-
-The `@` record is currently an A record → `203.29.225.181`. **Note that IP down** so it can be
-restored later. Cloudflare allows a CNAME at the apex (it gets flattened). Proxied records give
-the documented "orange-to-orange" (O2O) setup. Leave the MX/TXT records alone.
-
-Verify: `curl -I https://architecturematters.com.au/` → `HTTP/2 503` with `retry-after`, and
-`www` → 301 to the apex.
-
-**While restoring WordPress:** the restorer can reach the old server through a temporary record
-on their side (e.g. `staging` A → `203.29.225.181`) or a hosts-file entry.
-
-## SEO note
-
-Pages return **503 + Retry-After**, which tells Google the outage is temporary so rankings
-are kept. If the interim site will be up for more than about a week, set
-`MAINTENANCE_STATUS` to `"200"` in `wrangler.jsonc` and redeploy. A long-running 503 can
-get pages dropped from the index.
+They can switch the records to Proxied (orange cloud) after HTTPS is working, if they want
+Cloudflare in front. If so, set SSL/TLS mode to **Full**.
 
 ## Restoring the main site
 
-They set `@` back to `A 203.29.225.181` (or the new server's IP) and `www` back to
-`CNAME architecturematters.com.au`. Then we delete the two custom hostnames and can drop the
-throwaway zone.
+They remove the four GitHub A records and the `www` CNAME, put back `A @ 203.29.225.181` (or the
+new server's IP) and `CNAME www architecturematters.com.au`, and we remove the custom domain from
+this repo's Pages settings.
+
+While the restore is in progress, the restorer can reach the old server through a temporary
+record (e.g. `staging` A → `203.29.225.181`) or a hosts-file entry.
